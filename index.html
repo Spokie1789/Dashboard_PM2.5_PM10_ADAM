@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Amsterdam 30 km/h &amp; Air Quality — Oud-Oost vs Noord-West</title>
+<title>Amsterdam 30 km/h Air Quality Dashboard — Oud-Oost vs Noord-West</title>
 
 <!-- Leaflet (interactive map) -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -12,28 +12,38 @@
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <!-- Chart.js (charts) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Inter webfont: one consistent typeface across the page and the charts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
   :root{
-    --ink:#1f2933; --muted:#647082; --line:#e3e8ef; --bg:#f4f6f9; --card:#ffffff;
-    --accent:#2e7d32;            /* HAS green */
-    --accent-2:#1565c0;          /* Oud-Oost / professional blue */
-    --accent-3:#00838f;          /* Noord-West / teal */
-    --good:#2e9e4f; --bad:#d8442c; --neutral:#9aa5b1;
-    --before:#90a4ae; --after:#e8710a;
-    --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
+    --ink:#2b2a28; --muted:#6f6e68; --line:#e6e4e0; --bg:#f5f4f2; --card:#ffffff;
+    --red:#A32D2D; --gray:#888780;
+    --accent:#A32D2D;            /* primary accent (red) */
+    --accent-2:#A32D2D;          /* links */
+    --good:#2e9e4f;              /* improved = green (clear, readable) */
+    --bad:#A32D2D;               /* worsened = red (draws attention) */
+    --neutral:#9aa5b1;           /* no change / insufficient */
+    --before:#888780; --after:#A32D2D;
+    --shadow:0 1px 3px rgba(40,38,34,.10),0 1px 2px rgba(40,38,34,.06);
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:"Segoe UI",Roboto,-apple-system,Helvetica,Arial,sans-serif;
-       color:var(--ink);background:var(--bg);line-height:1.55;font-size:15px}
+  body{margin:0;font-family:"Inter","Segoe UI",Roboto,-apple-system,Helvetica,Arial,sans-serif;
+       color:var(--ink);background:var(--bg);line-height:1.55;font-size:15px;
+       -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  /* Clean subscripts/superscripts (PM2.5, PM10, µg/m³) that don't disturb line height */
+  sub,sup{font-size:.72em;line-height:0;position:relative;vertical-align:baseline;font-weight:inherit}
+  sub{bottom:-.22em} sup{top:-.45em}
   .wrap{max-width:1140px;margin:0 auto;padding:0 20px}
   a{color:var(--accent-2)}
 
-  header{background:linear-gradient(135deg,#1b3a2b 0%,#2e7d32 60%,#3a8f8f 100%);color:#fff;
+  header{background:linear-gradient(135deg,#2b2a28 0%,#5e3130 55%,#A32D2D 100%);color:#fff;
          padding:38px 0 30px}
   header h1{margin:0 0 6px;font-size:1.9rem;letter-spacing:.2px}
-  header .q{margin:0;max-width:820px;color:#e8f3ec;font-size:1.02rem}
-  header .tags{margin-top:14px;font-size:.8rem;color:#cfe6d6;text-transform:uppercase;letter-spacing:.6px}
+  header .q{margin:0;max-width:820px;color:#f0e7e6;font-size:1.02rem}
+  header .tags{margin-top:14px;font-size:.8rem;color:#e3cdcc;text-transform:uppercase;letter-spacing:.6px}
 
   section{padding:34px 0;border-bottom:1px solid var(--line)}
   section:last-of-type{border-bottom:none}
@@ -42,11 +52,11 @@
   .lead{color:var(--muted);margin:0 0 22px;max-width:840px}
 
   /* Controls */
-  .controls{position:sticky;top:0;z-index:500;background:rgba(244,246,249,.95);
+  .controls{position:sticky;top:0;z-index:500;background:rgba(245,244,242,.95);
             backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:12px 0}
   .controls .wrap{display:flex;flex-wrap:wrap;gap:18px;align-items:center}
   .ctl-label{font-size:.78rem;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-right:6px}
-  .pills{display:inline-flex;background:#e7ebf1;border-radius:999px;padding:3px}
+  .pills{display:inline-flex;background:#eceae7;border-radius:999px;padding:3px}
   .pills button{border:0;background:transparent;padding:7px 16px;border-radius:999px;cursor:pointer;
                 font-size:.9rem;font-weight:600;color:var(--muted);transition:.15s}
   .pills button.on{background:#fff;color:var(--ink);box-shadow:var(--shadow)}
@@ -63,7 +73,7 @@
   .kpi .vals{margin-top:8px;color:var(--ink);font-size:.92rem}
   .kpi .sub{margin-top:8px;font-size:.78rem;color:var(--muted)}
   .badge{display:inline-block;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
-         padding:2px 8px;border-radius:999px;background:#eaf5ec;color:var(--accent)}
+         padding:2px 8px;border-radius:999px;background:#ecebe7;color:#6f6e68}
 
   .card{background:var(--card);border-radius:12px;box-shadow:var(--shadow);padding:18px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -83,25 +93,25 @@
   tbody tr:hover{background:#fafbfc}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
 
-  .callout{background:#fff8ec;border:1px solid #f3e2c0;border-left:4px solid #e8a33d;
+  .callout{background:#f6f4f2;border:1px solid #e6e4e0;border-left:4px solid var(--red);
            border-radius:8px;padding:14px 16px;margin-top:18px;font-size:.92rem}
-  .callout b{color:#9a6a16}
+  .callout b{color:var(--red)}
 
-  footer{background:#13241b;color:#cdd8d1;padding:26px 0;font-size:.86rem}
+  footer{background:#2b2a28;color:#ccc9c3;padding:26px 0;font-size:.86rem}
   footer .wrap{display:flex;flex-wrap:wrap;gap:8px 28px;justify-content:space-between}
-  footer .meta span{color:#8fae9b}
-  .disclaimer{max-width:680px;color:#a9bcae}
+  footer .meta span{color:#b0ada6}
+  .disclaimer{max-width:680px;color:#b0ada6}
 </style>
 </head>
 <body>
 
 <header>
   <div class="wrap">
-    <h1>Amsterdam 30 km/h &amp; Air Quality</h1>
-    <p class="q">To what extent do PM<sub>2.5</sub> and PM<sub>10</sub> concentrations differ between
-       <b>Oud-Oost</b> and <b>Noord-West</b> Amsterdam, before and after the introduction of the
-       city-wide 30 km/h policy (8 December 2023)?</p>
-    <div class="tags">RIVM Samenmeten · calibrated citizen sensors · LJ2_P3 · HAS green academy</div>
+    <h1>Amsterdam 30 km/h Air Quality Dashboard</h1>
+    <p class="q">In December 2023, Amsterdam lowered the speed limit to 30 km/h across most of the city.
+       This dashboard explores what that change did to the air people breathe — comparing fine dust levels
+       (PM<sub>2.5</sub> and PM<sub>10</sub>) before and after the limit in two contrasting neighbourhoods:
+       the busy, inner city <b>Oud-Oost</b> and the more open <b>Noord-West</b>.</p>
   </div>
 </header>
 
@@ -110,10 +120,10 @@
   <div class="wrap">
     <span class="ctl-label">Pollutant</span>
     <div class="pills" id="pollutant-pills">
-      <button data-poll="pm2.5" class="on">PM₂.₅</button>
-      <button data-poll="pm10">PM₁₀</button>
+      <button data-poll="pm2.5" class="on">PM<sub>2.5</sub></button>
+      <button data-poll="pm10">PM<sub>10</sub></button>
     </div>
-    <span class="ctl-label" style="margin-left:auto">Deep-dive area</span>
+    <span class="ctl-label" style="margin-left:auto">Deep dive area</span>
     <div class="pills" id="area-pills">
       <button data-area="Oud-Oost" class="on">Oud-Oost</button>
       <button data-area="Noord-West">Noord-West</button>
@@ -125,7 +135,7 @@
 <section>
   <div class="wrap">
     <h2>Headline: before vs after the 30 km/h limit</h2>
-    <p class="lead">Season-matched comparison — each calendar month of <b>2024 ("after")</b> is compared with the
+    <p class="lead">Season matched comparison — each calendar month of <b>2024 ("after")</b> is compared with the
       same month of <b>2023 ("before")</b>, so winter is only ever compared with winter. A
       <b>negative change means air quality improved</b> (less particulate matter). All four comparisons rest on
       12 matched months ("good" confidence).</p>
@@ -137,11 +147,11 @@
 <section>
   <div class="wrap">
     <h2>Where: neighbourhood map</h2>
-    <p class="lead">Real Amsterdam <i>gebied</i> boundaries shaded by their <b>season-matched</b> before/after
+    <p class="lead">Real Amsterdam neighbourhood boundaries shaded by their <b>season matched</b> before/after
       change — the same metric as the headline cards above, so the colours match. Each calibrated sensor is
       plotted as a point, coloured by its simpler raw before/after split (so an individual sensor can differ
-      from its area). Use the <b>pollutant</b> toggle to switch PM₂.₅ / PM₁₀; click any area or sensor for the
-      underlying numbers.</p>
+      from its area). Use the <b>pollutant</b> toggle to switch PM<sub>2.5</sub> / PM<sub>10</sub>; click any
+      area or sensor for the underlying numbers.</p>
     <div id="map"></div>
   </div>
 </section>
@@ -150,7 +160,7 @@
 <section>
   <div class="wrap">
     <h2>Trend over time</h2>
-    <p class="lead">7-day rolling average of the daily neighbourhood mean for the selected pollutant. The dashed
+    <p class="lead">7 day rolling average of the daily neighbourhood mean for the selected pollutant. The dashed
       line marks the policy date (8 Dec 2023).</p>
     <div class="card">
       <div class="chart-box"><canvas id="trendChart"></canvas></div>
@@ -163,11 +173,11 @@
   <div class="wrap">
     <h2>Is it traffic? Daily &amp; weekly patterns</h2>
     <p class="lead">These two views isolate a traffic signature for the <b id="deep-area">Oud-Oost</b> /
-      <b id="deep-poll">PM₂.₅</b> selection (change it with the toggles above). If the 30 km/h limit cut traffic
-      emissions, the rush-hour humps and the weekday-vs-weekend gap should shrink after the policy.</p>
+      <b id="deep-poll">PM<sub>2.5</sub></b> selection (change it with the toggles above). If the 30 km/h limit cut traffic
+      emissions, the rush hour humps and the weekday vs weekend gap should shrink after the policy.</p>
     <div class="grid2">
       <div class="card">
-        <p class="chart-title">Hour-of-day profile</p>
+        <p class="chart-title">Hour of day profile</p>
         <p class="chart-note">Average concentration per local hour (Europe/Amsterdam), before vs after.</p>
         <div class="chart-box"><canvas id="diurnalChart"></canvas></div>
       </div>
@@ -183,11 +193,11 @@
 <!-- 5. WHO exceedance -->
 <section>
   <div class="wrap">
-    <h2>Health framing: WHO daily-guideline exceedance</h2>
+    <h2>Health framing: WHO daily guideline exceedance</h2>
     <p class="lead">Share of days on which the neighbourhood's average daily concentration exceeded the
-      <b>WHO 2021 24-hour guideline</b> (<span id="who-limit"></span>), for the
-      <b id="who-area">Oud-Oost</b> / <b id="who-poll">PM₂.₅</b> selection. A drop after the policy is a
-      health-relevant improvement.</p>
+      <b>WHO 2021 24 hour guideline</b> (<span id="who-limit"></span>), for the
+      <b id="who-area">Oud-Oost</b> / <b id="who-poll">PM<sub>2.5</sub></b> selection. A drop after the policy is a
+      health relevant improvement.</p>
     <div class="grid2">
       <div class="card">
         <div class="chart-box"><canvas id="whoChart"></canvas></div>
@@ -201,8 +211,8 @@
 <section>
   <div class="wrap">
     <h2>Data coverage &amp; honest caveats</h2>
-    <p class="lead">How much data backs each comparison. Transparency here is what makes the conclusions
-      credible.</p>
+    <p class="lead">How much data sits behind each comparison. Being open about this is what makes the
+      results trustworthy.</p>
     <div class="card" style="overflow-x:auto">
       <table id="coverage-table">
         <thead><tr>
@@ -214,22 +224,27 @@
       </table>
     </div>
     <div class="callout">
-      <p><b>Read these alongside the numbers:</b></p>
+      <p><b>A few things to keep in mind when reading the numbers:</b></p>
       <ul style="margin:6px 0 0;padding-left:20px">
-        <li><b>Oud-Oost rests on a single stationary sensor.</b> Its entire before/after story comes from one
-          fixed location, so treat it as a case study rather than a definitive neighbourhood average. Noord-West
-          is backed by 2–3 stationary sensors.</li>
-        <li><b>Season-matched ≠ raw split.</b> The headline and the map polygons use 2023-vs-2024 month-matching
-          to remove seasonal bias. A naïve split on 8 Dec 2023 puts a winter-heavy stretch on the "after" side
-          and can flip the sign of small changes — e.g. Noord-West PM₂.₅ reads −2.6% (improved) season-matched
-          but +1.5% (worsened) on the raw split. The raw figure is kept in each area's popup for transparency,
-          and the individual sensor markers still use the raw split.</li>
-        <li><b>PM₂.₅ has ~6% missing calibrated values</b> (the RIVM model can't always produce one); these are
-          excluded from every statistic, not zero-filled.</li>
-        <li><b>High-tail outliers are kept</b> (e.g. fireworks, Saharan dust). Medians are computed alongside
-          means so a few spikes don't distort the trend.</li>
-        <li><b>PM₂.₅ is dominated by regional/secondary sources</b>, so a local speed limit is not expected to
-          move it much — useful context for the Oud-Oost PM₂.₅ result.</li>
+        <li><b>Oud-Oost has only one fixed sensor.</b> Everything shown for Oud-Oost comes from that single
+          spot, so it's best seen as one example location rather than the whole neighbourhood. Noord-West has
+          two to three fixed sensors, so its picture is more reliable.</li>
+        <li><b>Winter is only ever compared with winter.</b> Air quality is naturally worse in winter than in
+          summer. The 30 km/h limit started in December, so simply putting "everything before" next to
+          "everything after" would pack the "after" side with extra winter days and make the air look worse for
+          the wrong reason. To keep it fair, we compare each month of 2024 with the very same month of 2023
+          (January with January, July with July). For small differences this can even flip the direction:
+          Noord-West PM<sub>2.5</sub> looks slightly better this way, but slightly worse with the rough
+          "before vs after" method (the "raw split" shown on the cards and in the map's info boxes). We show both, so
+          nothing is hidden.</li>
+        <li><b>A small number of readings are missing.</b> For PM<sub>2.5</sub>, about 1 in 20 measurements
+          couldn't be calculated reliably, so we leave those out rather than guessing or filling them with zero.</li>
+        <li><b>We keep the unusual spikes.</b> Things like New Year's fireworks or Saharan dust can cause short
+          bursts of very high readings. We leave them in, but we also report the "typical" middle value, so a
+          handful of extreme days doesn't skew the overall picture.</li>
+        <li><b>A speed limit can't change everything.</b> A lot of the finest dust (PM<sub>2.5</sub>) drifts in
+          from outside the city and the wider region, so a local 30 km/h limit was never likely to move it much.
+          That helps explain the Oud-Oost PM<sub>2.5</sub> result.</li>
       </ul>
     </div>
   </div>
@@ -237,10 +252,10 @@
 
 <footer>
   <div class="wrap">
-    <p class="disclaimer">Source: RIVM <b>Samenmeten</b> calibrated citizen-sensor network (PM₂.₅ / PM₁₀).
+    <p class="disclaimer">Source: RIVM <b>Samenmeten</b> calibrated citizen sensor network (PM<sub>2.5</sub> / PM<sub>10</sub>).
       Results are analytical and evaluative — they are <b>not</b> intended to directly drive municipal policy
       decisions. Project LJ2_P3, HAS green academy, in collaboration with RIVM.</p>
-    <p class="meta">Generated <span id="meta-generated">—</span><br>Policy date: 8 Dec 2023</p>
+    <p class="meta">Generated <span id="meta-generated">—</span><br>Policy date: 8 Dec 2023<br>Basemap © OpenStreetMap, © CARTO</p>
   </div>
 </footer>
 
@@ -257,10 +272,10 @@
   var DATA = JSON.parse(raw);
 
   var state = { poll: "pm2.5", area: "Oud-Oost" };
-  var POLL_LABEL = {"pm2.5":"PM₂.₅","pm10":"PM₁₀"};
-  var COL = {good:"#2e9e4f", bad:"#d8442c", neutral:"#9aa5b1",
-             "Oud-Oost":"#1565c0", "Noord-West":"#00838f",
-             before:"#90a4ae", after:"#e8710a"};
+  var POLL_LABEL = {"pm2.5":"PM<sub>2.5</sub>","pm10":"PM<sub>10</sub>"};
+  var COL = {good:"#2e9e4f", bad:"#A32D2D", neutral:"#9aa5b1",
+             "Oud-Oost":"#A32D2D", "Noord-West":"#888780",
+             before:"#888780", after:"#A32D2D"};
   var AREAS = ["Oud-Oost","Noord-West"];
 
   function byPoll(arr,p){ return arr.filter(function(r){return r.pollutant===p;}); }
@@ -299,16 +314,16 @@
 
   /* ---- Charts ---- */
   var charts={};
-  Chart.defaults.font.family='"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
-  Chart.defaults.color="#647082";
+  Chart.defaults.font.family='"Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+  Chart.defaults.color="#6f6e68";
 
   // vertical policy-date line for the trend chart
   var policyLine={ id:"policyLine", afterDraw:function(c){
     var idx=c.$policyIndex; if(idx==null)return;
     var x=c.scales.x.getPixelForValue(idx), top=c.chartArea.top, bot=c.chartArea.bottom;
     var ctx=c.ctx; ctx.save(); ctx.beginPath(); ctx.setLineDash([6,4]);
-    ctx.lineWidth=1.5; ctx.strokeStyle="#b0392b"; ctx.moveTo(x,top); ctx.lineTo(x,bot); ctx.stroke();
-    ctx.setLineDash([]); ctx.fillStyle="#b0392b"; ctx.font="600 11px Segoe UI";
+    ctx.lineWidth=1.5; ctx.strokeStyle="#A32D2D"; ctx.moveTo(x,top); ctx.lineTo(x,bot); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle="#A32D2D"; ctx.font='600 11px Inter, "Segoe UI", sans-serif';
     ctx.fillText("30 km/h · 8 Dec 2023", x+6, top+14); ctx.restore();
   }};
 
@@ -327,7 +342,7 @@
       options:{maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
         plugins:{legend:{position:"top"},title:{display:false}},
         scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true},grid:{display:false}},
-                y:{title:{display:true,text:"µg/m³ (7-day mean)"},beginAtZero:true}}},
+                y:{title:{display:true,text:"µg/m³ (7 day mean)"},beginAtZero:true}}},
       plugins:[policyLine]});
     charts.trend.$policyIndex=idx<0?null:idx;
     charts.trend.update();
@@ -373,7 +388,7 @@
     var get=function(per){return rows.filter(function(r){return r.period===per;})[0]||{};};
     var b=get("before"),a=get("after");
     var limit=(DATA.meta.who_limits&&DATA.meta.who_limits[state.poll]);
-    document.getElementById("who-limit").textContent="PM"+(state.poll==="pm2.5"?"₂.₅ = 15":"₁₀ = 45")+" µg/m³";
+    document.getElementById("who-limit").innerHTML=POLL_LABEL[state.poll]+" = "+limit+" µg/m³";
     if(charts.who)charts.who.destroy();
     charts.who=new Chart(document.getElementById("whoChart"),{
       type:"bar",data:{labels:["Before","After"],datasets:[{label:"% of days exceeding WHO guideline",
@@ -401,9 +416,9 @@
   function styleColor(trend){ return trend==="improved"?COL.good:(trend==="worsened"?COL.bad:COL.neutral); }
   function trendFromPct(pct){ return pct==null?"insufficient":(pct<0?"improved":(pct>0?"worsened":"no change")); }
   function buildMapBase(){
-    map=L.map("map",{scrollWheelZoom:false});
+    map=L.map("map",{scrollWheelZoom:false,attributionControl:false});
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      {attribution:'&copy; OpenStreetMap, &copy; CARTO',maxZoom:19,subdomains:"abcd"}).addTo(map);
+      {maxZoom:19,subdomains:"abcd"}).addTo(map);
     // Frame both neighbourhoods automatically, with a little padding.
     map.fitBounds(L.geoJSON(DATA.areas_geojson).getBounds(),{padding:[30,30]});
     var legend=L.control({position:"bottomright"});
@@ -434,9 +449,9 @@
         return {color:c,weight:2,fillColor:c,fillOpacity:.28};},
       onEachFeature:function(f,layer){var s=seas[f.properties.area]||{},rw=raw[f.properties.area]||{};
         layer.bindPopup("<b>"+f.properties.area+" — "+POLL_LABEL[state.poll]+"</b>"+
-          "<br><b>Season-matched (2023 vs 2024):</b><br>"+
+          "<br><b>Season matched (2023 vs 2024):</b><br>"+
           fmt(s.avg_before)+" → "+fmt(s.avg_after)+" µg/m³ &middot; <b>"+pct(s.pct_change)+"</b>"+
-          "<br><span style='color:#888'>Raw 8-Dec split: "+pct(rw.pct_change)+
+          "<br><span style='color:#888'>Raw 8 Dec split: "+pct(rw.pct_change)+
           " &middot; sensors: "+(rw.n_sensors==null?"—":rw.n_sensors)+"</span>");}
     }).addTo(map);
     sensorLayer=L.layerGroup();
